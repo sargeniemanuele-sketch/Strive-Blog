@@ -1,13 +1,43 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Container, Form, Row, Col, Card, Spinner } from "react-bootstrap";
-import { Editor } from 'react-draft-wysiwyg';
-import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import draftToHtml from "draftjs-to-html"
-import { convertToRaw } from "draft-js"
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import Underline from '@tiptap/extension-underline'
+import { FaBold, FaItalic, FaUnderline, FaListUl, FaListOl, FaQuoteLeft } from 'react-icons/fa'
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL, authedFetch, getAuthToken } from "../../utils/api";
 import { BLOG_CATEGORIES } from "../../utils/categories";
 import FixedAlerts from "../../components/common/FixedAlerts";
+
+const ToolbarBtn = ({ active, onClick, children }) => (
+  <Button
+    type="button"
+    size="sm"
+    variant={active ? 'secondary' : 'outline-secondary'}
+    onClick={onClick}
+  >
+    {children}
+  </Button>
+)
+
+const EditorToolbar = ({ editor }) => {
+  if (!editor) return null
+  return (
+    <div className="new-editor-toolbar">
+      <ToolbarBtn active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><FaBold /></ToolbarBtn>
+      <ToolbarBtn active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}><FaItalic /></ToolbarBtn>
+      <ToolbarBtn active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()}><FaUnderline /></ToolbarBtn>
+      <span className="new-editor-sep" />
+      <ToolbarBtn active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</ToolbarBtn>
+      <ToolbarBtn active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>H3</ToolbarBtn>
+      <span className="new-editor-sep" />
+      <ToolbarBtn active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}><FaListUl /></ToolbarBtn>
+      <ToolbarBtn active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}><FaListOl /></ToolbarBtn>
+      <ToolbarBtn active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}><FaQuoteLeft /></ToolbarBtn>
+    </div>
+  )
+}
 
 const NewBlogPost = () => {
   const [title, setTitle] = useState('')
@@ -22,21 +52,23 @@ const NewBlogPost = () => {
   const navigate = useNavigate()
   const goBack = () => navigate(-1)
 
-  const handleContentChange = useCallback(value => {
-    setContent(draftToHtml(convertToRaw(value.getCurrentContent())))
-  }, [])
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: "Scrivi il contenuto dell'articolo..." }),
+      Underline,
+    ],
+    onUpdate: ({ editor }) => setContent(editor.getHTML()),
+  })
 
   useEffect(() => {
-    // Redirect immediato se non autenticato
     if (!getAuthToken()) {
       navigate('/login', { state: { flash: 'Devi essere autenticato per creare un articolo.' } })
       return
     }
     authedFetch(`${API_BASE_URL}/me`)
       .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data?.email) setAuthor(data.email)
-      })
+      .then(data => { if (data?.email) setAuthor(data.email) })
       .catch(() => {})
   }, [navigate])
 
@@ -105,6 +137,7 @@ const NewBlogPost = () => {
     setContent('')
     setError('')
     setResetKey(k => k + 1)
+    editor?.commands.clearContent(true)
   }
 
   return (
@@ -139,9 +172,7 @@ const NewBlogPost = () => {
                       <Form.Label className="fw-semibold">Categoria *</Form.Label>
                       <Form.Select size="lg" value={category} onChange={e => setCategory(e.target.value)}>
                         {BLOG_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
+                          <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </Form.Select>
                     </Form.Group>
@@ -184,7 +215,8 @@ const NewBlogPost = () => {
                     <Form.Group controlId="blog-content">
                       <Form.Label className="fw-semibold">Contenuto *</Form.Label>
                       <div className="new-editor">
-                        <Editor key={resetKey} onEditorStateChange={handleContentChange} className="new-blog-content" />
+                        <EditorToolbar editor={editor} />
+                        <EditorContent editor={editor} />
                       </div>
                     </Form.Group>
                   </Col>
@@ -210,17 +242,15 @@ const NewBlogPost = () => {
         </Col>
       </Row>
       <FixedAlerts
-        alerts={[
-          {
-            key: "new-error",
-            variant: "danger",
-            text: error,
-            onClose: error ? () => setError("") : undefined
-          }
-        ]}
+        alerts={[{
+          key: "new-error",
+          variant: "danger",
+          text: error,
+          onClose: error ? () => setError("") : undefined
+        }]}
       />
     </Container>
-  );
-};
+  )
+}
 
-export default NewBlogPost;
+export default NewBlogPost

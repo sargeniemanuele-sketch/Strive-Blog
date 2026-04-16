@@ -132,7 +132,7 @@ tr.admin-row.table-active { --bs-table-bg: rgba(124,58,237,0.22); }
 .admin-author-linkhint { font-size: 0.72rem; color: #93c5fd; }
 .admin-author-link:hover .admin-author-linkhint { color: #bfdbfe; }
 
-/* ── New post — form scuro e override editor WYSIWYG ── */
+/* ── New post — form scuro e editor TipTap ── */
 .new-article-card { background: #202632 !important; }
 .new-form .form-control,
 .new-form .form-select { background-color: #0f1724 !important; border-color: #344155 !important; color: #f8fafc !important; }
@@ -141,18 +141,11 @@ tr.admin-row.table-active { --bs-table-bg: rgba(124,58,237,0.22); }
 .new-form .form-select:focus { background-color: #0f1724 !important; border-color: #60a5fa !important; box-shadow: 0 0 0 0.2rem rgba(96,165,250,0.2) !important; color: #f8fafc !important; }
 .new-form input[type="file"]::file-selector-button { background: #1e293b; color: #f8fafc; border: 1px solid #344155; border-radius: 0.4rem; margin-right: 0.8rem; }
 .new-form .form-text { color: #94a3b8 !important; }
-.new-editor .rdw-editor-wrapper { border: 1px solid #344155 !important; border-radius: 0.5rem; background: #0f1724 !important; }
-.new-editor .rdw-editor-toolbar { background: #1e293b !important; border-bottom: 1px solid #344155 !important; padding: 0.5rem !important; flex-wrap: wrap !important; overflow-x: hidden !important; }
-.new-editor .rdw-editor-main { min-height: 260px; padding: 0.9rem; color: #f8fafc !important; background: #0b1220 !important; border-radius: 0 0 0.5rem 0.5rem; }
-.new-editor .rdw-editor-placeholder { color: #94a3b8 !important; }
-.new-editor .rdw-option-wrapper,
-.new-editor .rdw-dropdown-wrapper { background: #0f1724 !important; border-color: #344155 !important; color: #f8fafc !important; box-shadow: none !important; }
-.new-editor .rdw-option-wrapper:hover,
-.new-editor .rdw-dropdown-wrapper:hover { background: #1f2a3d !important; }
-.new-editor .rdw-option-wrapper img { filter: brightness(0) invert(1); }
-.new-editor .rdw-option-active,
-.new-editor .rdw-dropdown-selectedtext { color: #f8fafc !important; }
-.new-editor .rdw-dropdown-optionwrapper { background: #1e293b !important; border: 1px solid #344155 !important; }
-.new-editor .rdw-dropdownoption-default,
-.new-editor .rdw-dropdownoption-highlighted { color: #f8fafc !important; }
-.new-editor .rdw-dropdownoption-active { background: #334155 !important; }
+.new-editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding: 0.5rem; background: #1e293b; border: 1px solid #344155; border-bottom: none; border-radius: 0.5rem 0.5rem 0 0; }
+.new-editor-sep { width: 1px; height: 1.4rem; background: #344155; margin: 0 0.15rem; }
+.new-editor .ProseMirror { min-height: 260px; padding: 0.9rem; color: #f8fafc; background: #0b1220; border: 1px solid #344155; border-radius: 0 0 0.5rem 0.5rem; outline: none; }
+.new-editor .ProseMirror:focus { border-color: #60a5fa; box-shadow: 0 0 0 0.2rem rgba(96,165,250,0.2); }
+.new-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #94a3b8; pointer-events: none; float: left; height: 0; }
+.new-editor .ProseMirror h2, .new-editor .ProseMirror h3 { color: #f3f4f6; margin-top: 1rem; }
+.new-editor .ProseMirror ul, .new-editor .ProseMirror ol { padding-left: 1.4rem; }
+.new-editor .ProseMirror blockquote { border-left: 2px solid var(--bs-primary); padding-left: 1rem; color: #94a3b8; font-style: italic; }
