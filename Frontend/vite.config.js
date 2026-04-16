@@ -7,6 +7,9 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  optimizeDeps: {
+    include: ['draft-js', 'immutable', 'react-draft-wysiwyg', 'draftjs-to-html'],
+  },
   server: {
     port: 3001,
     strictPort: true, // errore esplicito se la porta è occupata (no salti silenziosi)
