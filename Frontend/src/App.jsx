@@ -124,7 +124,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/blog/:id" element={<Blog />} />
-        {/* <Route path="/new" element={<NewBlogPost />} /> */}
+        <Route path="/new" element={<NewBlogPost />} />
         <Route path="/profilo" element={<Dashboard />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/authors/deleted" element={<DeletedAuthorPage />} />
