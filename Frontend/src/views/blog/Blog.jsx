@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { API_BASE_URL, authedFetch } from "../../utils/api";
 import { getDisplayName, getTokenPayload } from "../../utils/token";
-import { BLOG_CATEGORIES } from "../../utils/categories";
 import PageSpinner from "../../components/common/PageSpinner";
 import FixedAlerts from "../../components/common/FixedAlerts";
 
@@ -15,22 +14,11 @@ const Blog = () => {
   const [message, setMessage] = useState(location.state?.flash || "");
   const [error, setError] = useState("");
 
-  const [postForm, setPostForm] = useState({
-    title: "",
-    category: "",
-    author: "",
-    readTimeValue: 1,
-    content: ""
-  });
-  const [coverFile, setCoverFile] = useState(null);
-
   // Payload JWT decodificato una sola volta — usato per tutti i controlli di ownership
   const tokenPayload = getTokenPayload()
   const isLoggedIn = Boolean(tokenPayload)
   const loggedName = getDisplayName()
   const isPrivilegedUser = tokenPayload?.role === 'admin' || tokenPayload?.role === 'superadmin'
-
-  const [isEditing, setIsEditing] = useState(false);
 
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -66,16 +54,6 @@ const Blog = () => {
     setMessage("");
   };
 
-  const syncPostFormFromBlog = (data) => {
-    setPostForm({
-      title: data.title || "",
-      category: data.category || "",
-      author: data.author || "",
-      readTimeValue: data.readTime?.value || 1,
-      content: data.content || ""
-    });
-  };
-
   const fetchBlog = useCallback(async () => {
     try {
       const res = await authedFetch(`${API_BASE_URL}/blogPosts/${id}`);
@@ -84,7 +62,6 @@ const Blog = () => {
 
       setBlog(data);
       setComments(sortComments(data.comments || []));
-      syncPostFormFromBlog(data);
       setLoading(false);
     } catch (err) {
       navigate("/");
@@ -199,72 +176,6 @@ const Blog = () => {
     }
   }
 
-  const handleUpdatePost = async () => {
-    try {
-      const payload = {
-        title: postForm.title,
-        category: postForm.category,
-        cover: blog.cover,
-        author: postForm.author,
-        readTime: {
-          value: Number(postForm.readTimeValue),
-          unit: "minuti"
-        },
-        content: postForm.content
-      };
-
-      const res = await authedFetch(`${API_BASE_URL}/blogPosts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Errore aggiornamento post");
-      setBlog(data);
-      syncPostFormFromBlog(data);
-      setSuccess("Post aggiornato");
-    } catch (err) {
-      setFailure(err.message);
-    }
-  };
-
-  const handleDeletePost = async () => {
-    try {
-      const res = await authedFetch(`${API_BASE_URL}/blogPosts/${id}`, {
-        method: "DELETE"
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Errore eliminazione post");
-      navigate("/");
-    } catch (err) {
-      setFailure(err.message);
-    }
-  };
-
-  const handleUploadCover = async () => {
-    if (!coverFile) {
-      setFailure("Seleziona un file cover da caricare");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("cover", coverFile);
-
-    try {
-      const res = await authedFetch(`${API_BASE_URL}/blogPosts/${id}/cover`, {
-        method: "PATCH",
-        body: formData
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Errore upload cover");
-      setBlog(data);
-      syncPostFormFromBlog(data);
-      setCoverFile(null);
-      setSuccess("Cover aggiornata");
-    } catch (err) {
-      setFailure(err.message);
-    }
-  };
 
   if (loading) {
     return (
@@ -333,88 +244,11 @@ const Blog = () => {
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(blog.content) }}
             />
 
-            {/* Pulsante modifica — visibile solo a chi può modificare, quando non si sta già modificando */}
-            {canEditPost && !isEditing && (
+            {canEditPost && (
               <div className="mt-4">
-                <Button variant="outline-primary" size="sm" onClick={() => setIsEditing(true)}>
+                <Button variant="outline-primary" size="sm" onClick={() => navigate(`/blog/${id}/edit`)}>
                   Modifica articolo
                 </Button>
-              </div>
-            )}
-
-            {/* Pannello di gestione visibile solo all'autore del post o all'admin */}
-            {canEditPost && isEditing && (
-              <div className="mt-5 p-3 border rounded-3 bg-body-tertiary">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h2 className="h5 mb-0">Gestione articolo</h2>
-                  <Button variant="outline-secondary" size="sm" onClick={() => setIsEditing(false)}>
-                    Annulla
-                  </Button>
-                </div>
-                <Row className="g-3">
-                  <Col md={8}>
-                    <Form.Label>Titolo</Form.Label>
-                    <Form.Control
-                      value={postForm.title}
-                      onChange={(e) => setPostForm((p) => ({ ...p, title: e.target.value }))}
-                    />
-                  </Col>
-                  <Col md={4}>
-                    <Form.Label>Categoria</Form.Label>
-                    <Form.Select
-                      value={postForm.category}
-                      onChange={(e) => setPostForm((p) => ({ ...p, category: e.target.value }))}
-                    >
-                      {postForm.category && !BLOG_CATEGORIES.includes(postForm.category) && (
-                        <option value={postForm.category}>{postForm.category}</option>
-                      )}
-                      {BLOG_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Col>
-                  <Col md={12}>
-                    <Form.Label>Email autore</Form.Label>
-                    <Form.Control
-                      value={postForm.author}
-                      onChange={(e) => setPostForm((p) => ({ ...p, author: e.target.value }))}
-                    />
-                  </Col>
-                  <Col md={4}>
-                    <Form.Label>Tempo di lettura</Form.Label>
-                    <Form.Control
-                      type="number"
-                      min={1}
-                      value={postForm.readTimeValue}
-                      onChange={(e) => setPostForm((p) => ({ ...p, readTimeValue: e.target.value }))}
-                    />
-                  </Col>
-                  <Col xs={12}>
-                    <Form.Label>Contenuto HTML</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={6}
-                      value={postForm.content}
-                      onChange={(e) => setPostForm((p) => ({ ...p, content: e.target.value }))}
-                    />
-                  </Col>
-                  <Col xs={12} className="d-flex gap-2 flex-wrap">
-                    <Button variant="primary" onClick={handleUpdatePost}>Aggiorna articolo</Button>
-                    <Button variant="danger" onClick={handleDeletePost}>Elimina articolo</Button>
-                  </Col>
-                </Row>
-                <hr className="my-3" />
-                <Row className="g-2 align-items-end">
-                  <Col md={8}>
-                    <Form.Label>Carica copertina</Form.Label>
-                    <Form.Control type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] || null)} />
-                  </Col>
-                  <Col md={4} className="d-grid">
-                    <Button variant="primary" onClick={handleUploadCover}>Carica copertina</Button>
-                  </Col>
-                </Row>
               </div>
             )}
 

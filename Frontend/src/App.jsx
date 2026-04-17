@@ -4,6 +4,7 @@ import Footer from "./components/footer/Footer";
 import Home from "./views/home/Home";
 import Blog from "./views/blog/Blog";
 import NewBlogPost from "./views/new/New";
+import EditBlogPost from "./views/blog/EditBlogPost";
 import Login from "./views/login/Login";
 import Register from "./views/register/Register";
 import Dashboard from "./views/dashboard/Dashboard";
@@ -124,6 +125,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/blog/:id" element={<Blog />} />
+        <Route path="/blog/:id/edit" element={<EditBlogPost />} />
         <Route path="/new" element={<NewBlogPost />} />
         <Route path="/profilo" element={<Dashboard />} />
         <Route path="/admin" element={<AdminPanel />} />
