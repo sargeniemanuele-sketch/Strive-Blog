@@ -7,6 +7,7 @@ import Underline from '@tiptap/extension-underline'
 import { FaBold, FaItalic, FaUnderline, FaListUl, FaListOl, FaQuoteLeft } from 'react-icons/fa'
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL, authedFetch } from "../../utils/api";
+import { getTokenPayload } from "../../utils/token";
 import { BLOG_CATEGORIES } from "../../utils/categories";
 import FixedAlerts from "../../components/common/FixedAlerts";
 import PageSpinner from "../../components/common/PageSpinner";
@@ -50,6 +51,7 @@ const EditBlogPost = () => {
   const [author, setAuthor] = useState('')
   const [readTimeValue, setReadTimeValue] = useState(1)
   const [currentCover, setCurrentCover] = useState('')
+  const [initialContent, setInitialContent] = useState(null)
   const [coverFile, setCoverFile] = useState(null)
   const [resetKey, setResetKey] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -64,22 +66,39 @@ const EditBlogPost = () => {
     ],
   })
 
+  // Fetch del post — separato dall'editor per evitare doppio fetch
   useEffect(() => {
+    const tokenPayload = getTokenPayload()
+    if (!tokenPayload) {
+      navigate('/login')
+      return
+    }
     authedFetch(`${API_BASE_URL}/blogPosts/${id}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
+        const isPrivileged = tokenPayload.role === 'admin' || tokenPayload.role === 'superadmin'
+        const isOwner = data.authorId && String(tokenPayload.id) === String(data.authorId)
+        if (!isPrivileged && !isOwner) {
+          navigate(`/blog/${id}`)
+          return
+        }
         setTitle(data.title || '')
         setCategory(data.category || BLOG_CATEGORIES[0])
         setAuthor(data.author || '')
         setReadTimeValue(data.readTime?.value || 1)
         setCurrentCover(data.cover || '')
-        if (editor) {
-          editor.commands.setContent(data.content || '', false)
-        }
+        setInitialContent(data.content || '')
         setLoading(false)
       })
       .catch(() => navigate('/'))
-  }, [id, navigate, editor])
+  }, [id, navigate])
+
+  // Imposta il contenuto nell'editor solo quando entrambi sono pronti
+  useEffect(() => {
+    if (editor && initialContent !== null) {
+      editor.commands.setContent(initialContent, false)
+    }
+  }, [editor, initialContent])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
