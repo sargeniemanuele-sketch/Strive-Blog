@@ -46,11 +46,11 @@ app.get('/me', async (req, res) => {
   }
 })
 
-// ─── Cron: eliminazione account non verificati dopo 7 giorni ─────────────────
-// Gira ogni giorno a mezzanotte
-cron.schedule('0 0 * * *', async () => {
+// ─── Cron: eliminazione account non verificati dopo 24 ore ───────────────────
+// Gira ogni ora
+cron.schedule('0 * * * *', async () => {
   try {
-    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const result = await Author.deleteMany({
       emailVerified: false,
       googleId: { $exists: false },
