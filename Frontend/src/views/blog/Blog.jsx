@@ -30,6 +30,8 @@ const Blog = () => {
   const loggedName = getDisplayName()
   const isPrivilegedUser = tokenPayload?.role === 'admin' || tokenPayload?.role === 'superadmin'
 
+  const [isEditing, setIsEditing] = useState(false);
+
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
@@ -331,10 +333,24 @@ const Blog = () => {
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(blog.content) }}
             />
 
+            {/* Pulsante modifica — visibile solo a chi può modificare, quando non si sta già modificando */}
+            {canEditPost && !isEditing && (
+              <div className="mt-4">
+                <Button variant="outline-primary" size="sm" onClick={() => setIsEditing(true)}>
+                  Modifica articolo
+                </Button>
+              </div>
+            )}
+
             {/* Pannello di gestione visibile solo all'autore del post o all'admin */}
-            {canEditPost && (
+            {canEditPost && isEditing && (
               <div className="mt-5 p-3 border rounded-3 bg-body-tertiary">
-                <h2 className="h5 mb-3">Gestione articolo</h2>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h2 className="h5 mb-0">Gestione articolo</h2>
+                  <Button variant="outline-secondary" size="sm" onClick={() => setIsEditing(false)}>
+                    Annulla
+                  </Button>
+                </div>
                 <Row className="g-3">
                   <Col md={8}>
                     <Form.Label>Titolo</Form.Label>
