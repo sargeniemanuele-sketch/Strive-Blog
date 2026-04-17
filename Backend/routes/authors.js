@@ -100,7 +100,8 @@ const toPublicAuthorPayload = (authorDoc) => {
     email: author.email || '',
     avatar: author.avatar || '',
     bio: author.bio || '',
-    role: normalizeRole(author.role)
+    role: normalizeRole(author.role),
+    emailVerified: author.googleId ? true : Boolean(author.emailVerified)
   }
 }
 
@@ -202,7 +203,7 @@ router.post('/password-change/confirm', async (req, res) => {
 // GET /authors/public/:id - profilo autore pubblico
 router.get('/public/:id', async (req, res) => {
   try {
-    const author = await Author.findById(req.params.id).select('nome cognome email avatar bio role')
+    const author = await Author.findById(req.params.id).select('nome cognome email avatar bio role emailVerified googleId')
     if (!author) return res.status(404).json({ message: 'Autore non trovato' })
     res.json(toPublicAuthorPayload(author))
   } catch (err) {

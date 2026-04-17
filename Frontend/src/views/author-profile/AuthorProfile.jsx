@@ -312,6 +312,10 @@ const AuthorProfile = () => {
               <div className="d-flex align-items-center gap-2 flex-wrap">
                 <span className="small text-body-secondary text-uppercase">{author.role || "user"}</span>
                 {isAdminUser && fullAuthor && <StatusBadge author={fullAuthor} />}
+                {author.emailVerified
+                  ? <Badge bg="success" className="fw-normal">Email verificata</Badge>
+                  : <Badge bg="warning" text="dark" className="fw-normal">Email non verificata</Badge>
+                }
               </div>
             </div>
           </div>
