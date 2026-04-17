@@ -8,7 +8,7 @@ const authorSchema = new mongoose.Schema({
   dataDiNascita: { type: String, default: '' },
   // Profilo
   avatar: { type: String, default: '' },
-  bio: { type: String, default: 'Autore su Strive Blog.', trim: true, maxlength: 280 },
+  bio: { type: String, default: '', trim: true, maxlength: 280 },
   // Ruolo e stato
   role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
   blocked: { type: Boolean, default: false },
