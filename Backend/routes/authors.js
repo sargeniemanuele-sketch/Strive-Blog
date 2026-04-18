@@ -313,13 +313,19 @@ router.get('/stats', adminMiddleware, async (req, res) => {
           $group: {
             _id: null,
             totalPosts: { $sum: 1 },
-            totalComments: { $sum: { $size: '$comments' } },
-            totalLikes: { $sum: { $size: '$likes' } }
+            totalComments: { $sum: { $size: { $ifNull: ['$comments', []] } } },
+            totalLikes: { $sum: { $size: { $ifNull: ['$likes', []] } } }
           }
         }
       ]),
       BlogPost.aggregate([
-        { $project: { title: 1, commentsCount: { $size: '$comments' }, likesCount: { $size: '$likes' } } },
+        {
+          $project: {
+            title: 1,
+            commentsCount: { $size: { $ifNull: ['$comments', []] } },
+            likesCount: { $size: { $ifNull: ['$likes', []] } }
+          }
+        },
         { $sort: { commentsCount: -1 } },
         { $limit: 5 }
       ])

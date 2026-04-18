@@ -297,9 +297,9 @@ const AdminPanel = () => {
 
   useEffect(() => {
     authedFetch(`${API_BASE_URL}/authors/stats`)
-      .then(res => res.ok ? res.json() : null)
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Stats non disponibili')))
       .then(data => { if (data) setStats(data) })
-      .catch(() => {})
+      .catch(err => setError(err.message))
   }, [])
 
   useEffect(() => {
