@@ -13,6 +13,8 @@ const authorSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin', 'superadmin'], default: 'user' },
   blocked: { type: Boolean, default: false },
   blockedUntil: { type: Date, default: null },
+  // Post salvati
+  savedPosts: { type: [mongoose.Schema.Types.ObjectId], ref: 'BlogPost', default: [] },
   // Auth — Google OAuth
   googleId: { type: String },
   // Auth — password locale

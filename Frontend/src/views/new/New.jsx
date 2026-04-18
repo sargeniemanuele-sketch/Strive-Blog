@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Container, Form, Row, Col, Card, Spinner } from "react-bootstrap";
+import { Button, Container, Form, Row, Col, Card, Spinner, Modal } from "react-bootstrap";
+import DOMPurify from "dompurify";
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -49,6 +50,7 @@ const NewBlogPost = () => {
   const [error, setError] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [resetKey, setResetKey] = useState(0)
+  const [showPreview, setShowPreview] = useState(false)
   const navigate = useNavigate()
   const goBack = () => navigate(-1)
 
@@ -222,12 +224,15 @@ const NewBlogPost = () => {
                   </Col>
                 </Row>
 
-                <Form.Group className="d-flex mt-4 gap-2 pb-5">
+                <Form.Group className="d-flex mt-4 gap-2 pb-5 flex-wrap">
                   <Button type="button" variant="outline-secondary" className="flex-fill text-nowrap" onClick={() => navigate('/')}>
                     Annulla
                   </Button>
                   <Button type="reset" variant="secondary" className="flex-fill text-nowrap" onClick={handleReset}>
                     Reset
+                  </Button>
+                  <Button type="button" variant="outline-primary" className="flex-fill text-nowrap" onClick={() => setShowPreview(true)}>
+                    Anteprima
                   </Button>
                   <Button type="submit" variant="primary" className="flex-fill text-nowrap" disabled={publishing}>
                     {publishing
@@ -241,6 +246,37 @@ const NewBlogPost = () => {
           </Card>
         </Col>
       </Row>
+      <Modal show={showPreview} onHide={() => setShowPreview(false)} size="lg" centered scrollable>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 mb-0">Anteprima articolo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {coverFile && (
+            <img
+              src={URL.createObjectURL(coverFile)}
+              alt="Cover anteprima"
+              className="w-100 rounded mb-3 object-fit-cover"
+              style={{ maxHeight: 300 }}
+            />
+          )}
+          {category && <span className="badge text-bg-secondary mb-2">{category}</span>}
+          <h2 className="h4 fw-bold mb-2">{title || <span className="text-body-secondary fst-italic">Nessun titolo</span>}</h2>
+          {readTimeValue && (
+            <div className="small text-body-secondary mb-3">{readTimeValue} minuti di lettura</div>
+          )}
+          <div
+            className="blog-details-content lh-lg"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+          />
+          {!content.replace(/<[^>]*>/g, '').trim() && (
+            <p className="text-body-secondary fst-italic">Nessun contenuto.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowPreview(false)}>Chiudi</Button>
+        </Modal.Footer>
+      </Modal>
+
       <FixedAlerts
         alerts={[{
           key: "new-error",

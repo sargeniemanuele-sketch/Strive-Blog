@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Button, Container, Form, Row, Col, Card, Spinner, Image } from "react-bootstrap";
+import { Button, Container, Form, Row, Col, Card, Spinner, Image, Modal } from "react-bootstrap";
+import DOMPurify from "dompurify";
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -57,6 +58,7 @@ const EditBlogPost = () => {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -287,6 +289,9 @@ const EditBlogPost = () => {
                   >
                     {deleting ? <Spinner animation="border" size="sm" /> : 'Elimina articolo'}
                   </Button>
+                  <Button type="button" variant="outline-primary" className="flex-fill text-nowrap" onClick={() => setShowPreview(true)}>
+                    Anteprima
+                  </Button>
                   <Button type="submit" variant="primary" className="flex-fill text-nowrap" disabled={saving}>
                     {saving
                       ? <><Spinner animation="border" size="sm" className="me-2" />Salvataggio...</>
@@ -299,6 +304,45 @@ const EditBlogPost = () => {
           </Card>
         </Col>
       </Row>
+      <Modal show={showPreview} onHide={() => setShowPreview(false)} size="lg" centered scrollable>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 mb-0">Anteprima articolo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {(() => {
+            const previewCover = coverFile ? URL.createObjectURL(coverFile) : currentCover
+            const previewContent = editor ? editor.getHTML() : ''
+            return (
+              <>
+                {previewCover && (
+                  <img
+                    src={previewCover}
+                    alt="Cover anteprima"
+                    className="w-100 rounded mb-3 object-fit-cover"
+                    style={{ maxHeight: 300 }}
+                  />
+                )}
+                {category && <span className="badge text-bg-secondary mb-2">{category}</span>}
+                <h2 className="h4 fw-bold mb-2">{title || <span className="text-body-secondary fst-italic">Nessun titolo</span>}</h2>
+                {readTimeValue && (
+                  <div className="small text-body-secondary mb-3">{readTimeValue} minuti di lettura</div>
+                )}
+                <div
+                  className="blog-details-content lh-lg"
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewContent) }}
+                />
+                {!previewContent.replace(/<[^>]*>/g, '').trim() && (
+                  <p className="text-body-secondary fst-italic">Nessun contenuto.</p>
+                )}
+              </>
+            )
+          })()}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowPreview(false)}>Chiudi</Button>
+        </Modal.Footer>
+      </Modal>
+
       <FixedAlerts
         alerts={[{
           key: "edit-error",

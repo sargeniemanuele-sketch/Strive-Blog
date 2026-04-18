@@ -5,7 +5,8 @@ API REST che gestisce autenticazione, utenti, articoli e commenti.
 ## Avvio
 ```bash
 npm install
-npm start
+npm run dev   # nodemon
+npm start     # produzione
 ```
 
 ### Configurazione variabili d'ambiente
@@ -28,19 +29,21 @@ cp .env.example .env
 | `GOOGLE_CLIENT_SECRET` | Google Console → Credenziali → OAuth 2.0 |
 | `GOOGLE_CALLBACK_URL` | `http://localhost:3000/auth/google/callback` (dev) |
 | `FRONTEND_URL` | `http://localhost:3001` (dev) |
-| `PASSWORD_CHANGE_TOKEN_TTL_MINUTES` | Minuti di validità del link cambio password (es. `30`). Da non confondere con il link di verifica email alla registrazione, che ha scadenza fissa di 24 ore |
+| `PASSWORD_CHANGE_TOKEN_TTL_MINUTES` | Minuti di validità del link cambio password (es. `30`) |
 
 ## Modelli principali
 
-**Author** — `nome`, `cognome`, `email`, `dataDiNascita`, `avatar`, `bio`, `role`, `blocked`, `blockedUntil`, `googleId`, `password`, `emailVerified`
+**Author** — `nome`, `cognome`, `email`, `dataDiNascita`, `avatar`, `bio`, `role`, `blocked`, `blockedUntil`, `googleId`, `password`, `emailVerified`, `savedPosts[]`
 
-**BlogPost** — `category`, `title`, `cover`, `content`, `readTime`, `author` (email), `authorId`, `authorName`, `comments[]`
+**BlogPost** — `category`, `title`, `cover`, `content`, `readTime`, `author` (email), `authorId`, `authorName`, `likes[]`, `comments[]`
 
-**Comment** (embedded nel BlogPost) — `author`, `authorId`, `content`
+**Comment** (embedded nel BlogPost) — `author`, `authorId`, `content`, `replies[]`
+
+**Reply** (embedded nel Comment) — `author`, `authorId`, `content`
 
 **RoleChangeAudit** — `actorId/Name/Email`, `targetId/Name/Email`, `fromRole`, `toRole`, `ip`, `userAgent`
 
-> I campi sensibili (hash password, token email, token cambio password) vengono rimossi automaticamente da tutte le risposte JSON tramite un transform `toJSON` su ogni schema Mongoose.
+> I campi sensibili (hash password, token email, `authorEmail` nei commenti/risposte) vengono rimossi automaticamente da tutte le risposte JSON tramite transform `toJSON` su ogni schema Mongoose.
 
 ## Rotte
 
@@ -55,15 +58,17 @@ cp .env.example .env
 ### Autori
 | Metodo | Rotta | Auth | Descrizione |
 |---|---|---|---|
-| POST | `/authors` | — | Registrazione; invia email di verifica + benvenuto |
+| POST | `/authors` | — | Registrazione; invia email di verifica |
 | GET | `/authors/verify-email/:token` | — | Verifica l'email dal link ricevuto → JWT |
 | POST | `/authors/password-change/confirm` | — | Conferma cambio password dal link email → JWT |
 | GET | `/authors/public/:id` | — | Profilo pubblico autore |
 | GET | `/authors/public/:id/blogPosts` | — | Post pubblici di un autore |
 | POST | `/authors/resend-verification` | JWT | Re-invia email di verifica all'utente loggato |
+| GET | `/authors/bookmarks` | JWT | Post salvati dall'utente corrente |
+| PATCH | `/authors/bookmarks/:postId` | JWT | Toggle salva/rimuovi post dai preferiti |
+| GET | `/authors/stats` | JWT + admin | Statistiche piattaforma (autori, post, commenti, like, top post) |
 | GET | `/authors` | JWT + admin | Lista paginata di tutti gli autori |
 | GET | `/authors/role-audit` | JWT + superadmin | Log storico cambi ruolo |
-| GET | `/authors/:id/deletion-candidates` | JWT | Candidati a cui passare il ruolo prima di auto-eliminarsi (solo per admin/superadmin) |
 | GET | `/authors/:id` | JWT | Dettaglio autore (sé stesso o admin) |
 | GET | `/authors/:id/blogPosts` | JWT | Post dell'autore (sé stesso o admin) |
 | PUT | `/authors/:id` | JWT | Modifica profilo (sé stesso o admin) |
@@ -79,16 +84,20 @@ cp .env.example .env
 | GET | `/blogPosts` | — | Lista post paginata; filtri: `title`, `author`, `category` |
 | GET | `/blogPosts/filters` | — | Valori disponibili per i filtri (categorie, titoli, autori) |
 | GET | `/blogPosts/authors` | — | Lista autori che hanno almeno un post |
+| GET | `/blogPosts/admin/comments` | JWT + admin | Tutti i commenti di tutti i post (moderazione) |
 | GET | `/blogPosts/:id` | — | Dettaglio post (con `authorAvatar` arricchito live) |
 | GET | `/blogPosts/:id/comments` | — | Lista commenti del post |
 | GET | `/blogPosts/:id/comments/:commentId` | — | Singolo commento |
-| POST | `/blogPosts/cover-upload` | JWT | Upload cover su Cloudinary prima della creazione del post → restituisce `{ url }` |
 | POST | `/blogPosts` | JWT | Crea post; autore ricavato dal token, non dal body |
-| POST | `/blogPosts/:id` | JWT | Aggiunge un commento al post |
 | PUT | `/blogPosts/:id` | JWT | Modifica post (owner o admin) |
-| PUT | `/blogPosts/:id/comment/:commentId` | JWT | Modifica commento (owner o admin) |
 | DELETE | `/blogPosts/:id` | JWT | Elimina post (owner o admin) |
+| PATCH | `/blogPosts/:id/like` | JWT | Toggle like al post |
+| POST | `/blogPosts/:id` | JWT | Aggiunge un commento al post |
+| PUT | `/blogPosts/:id/comment/:commentId` | JWT | Modifica commento (owner o admin) |
 | DELETE | `/blogPosts/:id/comment/:commentId` | JWT | Elimina commento (owner o admin) |
+| POST | `/blogPosts/:id/comment/:commentId/reply` | JWT | Aggiunge una risposta a un commento |
+| PUT | `/blogPosts/:id/comment/:commentId/reply/:replyId` | JWT | Modifica risposta (owner o admin) |
+| DELETE | `/blogPosts/:id/comment/:commentId/reply/:replyId` | JWT | Elimina risposta (owner o admin) |
 | PATCH | `/blogPosts/:blogPostId/cover` | JWT | Upload cover su Cloudinary (1200×675, crop auto) |
 
 ## Regole di autorizzazione
@@ -96,20 +105,24 @@ cp .env.example .env
 - `admin` gestisce utenti `user`; `superadmin` gestisce anche `admin`.
 - Nessun utente può cambiarsi ruolo da solo.
 - Self-delete di `admin`/`superadmin` richiede di indicare a chi passare il proprio ruolo.
+- Commenti e risposte possono essere creati solo da utenti autenticati.
 
 ## Email inviate automaticamente
 | Evento | Destinatario |
 |---|---|
-| Registrazione | Benvenuto + link di verifica email |
-| Nuovo post | Autore del post |
+| Registrazione | Link di verifica email (scade in 24 ore) |
+| Verifica email completata | Benvenuto |
+| Nuovo post pubblicato | Autore del post |
 | Primo commento al post | Autore del post (solo se il commenter non è l'autore stesso) |
 | Post eliminato da un admin | Autore del post |
-| Blocco / sblocco account | Utente interessato |
+| Blocco account | Utente bloccato |
+| Sblocco account | Utente sbloccato |
 | Cambio ruolo | Utente interessato |
 | Eliminazione account | Utente eliminato |
+| Richiesta cambio password | Utente — link di conferma |
 
 ## Cron job
-Ogni notte a mezzanotte il server elimina automaticamente gli account email/password che non hanno completato la verifica entro 7 giorni dalla registrazione. Gli account Google non vengono toccati.
+Ogni notte a mezzanotte il server elimina automaticamente gli account email/password che non hanno completato la verifica entro **24 ore** dalla registrazione. Gli account Google non vengono toccati.
 
 ## Primo avvio — assegnare il ruolo superadmin
 ```bash

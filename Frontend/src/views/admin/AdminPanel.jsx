@@ -62,6 +62,13 @@ const AdminPanel = () => {
   const [showBioModal, setShowBioModal] = useState(false)
   const [bioModalAuthor, setBioModalAuthor] = useState(null)
 
+  const [modComments, setModComments] = useState([])
+  const [modPage, setModPage] = useState(1)
+  const [modTotalPages, setModTotalPages] = useState(1)
+  const [loadingMod, setLoadingMod] = useState(false)
+
+  const [stats, setStats] = useState(null)
+
   // Protezione: solo admin
   useEffect(() => {
     if (!isAdmin()) navigate('/', { replace: true })
@@ -257,7 +264,43 @@ const AdminPanel = () => {
     setShowBioModal(true)
   }
 
+  const fetchModComments = useCallback(async (p = 1) => {
+    setLoadingMod(true)
+    try {
+      const params = new URLSearchParams({ page: String(p), limit: '20' })
+      const res = await authedFetch(`${API_BASE_URL}/blogPosts/admin/comments?${params}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message)
+      setModComments(data.comments || [])
+      setModPage(data.currentPage || p)
+      setModTotalPages(data.totalPages || 1)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingMod(false)
+    }
+  }, [])
+
+  const deleteModComment = async (postId, commentId) => {
+    try {
+      const res = await authedFetch(`${API_BASE_URL}/blogPosts/${postId}/comment/${commentId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message)
+      setModComments(prev => prev.filter(c => c.comment._id !== commentId))
+      setMessage('Commento eliminato.')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   useEffect(() => { fetchAuthors(1) }, [fetchAuthors])
+
+  useEffect(() => {
+    authedFetch(`${API_BASE_URL}/authors/stats`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setStats(data) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!message) return
@@ -287,6 +330,42 @@ const AdminPanel = () => {
           Aggiorna
         </Button>
       </div>
+
+      {stats && (
+        <Row className="g-3 mb-4">
+          {[
+            { label: 'Utenti totali', value: stats.totalAuthors },
+            { label: 'Nuovi utenti (30gg)', value: stats.newAuthorsLastMonth },
+            { label: 'Post pubblicati', value: stats.totalPosts },
+            { label: 'Commenti totali', value: stats.totalComments },
+            { label: 'Like totali', value: stats.totalLikes },
+          ].map(({ label, value }) => (
+            <Col xs={6} md={4} lg={2} key={label}>
+              <Card className="bg-body-tertiary border-0 text-center py-3 px-2">
+                <div className="h4 mb-1 fw-bold">{value ?? '—'}</div>
+                <div className="small text-body-secondary">{label}</div>
+              </Card>
+            </Col>
+          ))}
+          {stats.topPosts?.length > 0 && (
+            <Col xs={12} lg={6}>
+              <Card className="bg-body-tertiary border-0 h-100">
+                <Card.Body className="py-2 px-3">
+                  <div className="small text-body-secondary mb-2 fw-semibold">Top 5 post più commentati</div>
+                  {stats.topPosts.map(post => (
+                    <div key={post._id} className="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary border-opacity-25 small">
+                      <Link to={`/blog/${post._id}`} className="text-truncate me-2 text-decoration-none text-body" style={{ maxWidth: '75%' }}>
+                        {post.title}
+                      </Link>
+                      <span className="text-body-secondary flex-shrink-0">{post.commentsCount} commenti</span>
+                    </div>
+                  ))}
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+        </Row>
+      )}
 
       <Row className="mb-3 g-2 align-items-center">
         <Col xs={12} md={6} lg={4}>
@@ -670,6 +749,65 @@ const AdminPanel = () => {
           </Button>
         </div>
       )}
+
+      {/* ── Sezione moderazione commenti ── */}
+      <div className="mt-5">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h2 className="h5 mb-0">Moderazione commenti</h2>
+          <Button size="sm" variant="outline-secondary" onClick={() => fetchModComments(modPage)}>
+            {loadingMod ? <Spinner animation="border" size="sm" /> : 'Carica commenti'}
+          </Button>
+        </div>
+        {modComments.length === 0 && !loadingMod ? (
+          <p className="text-body-secondary small">Clicca "Carica commenti" per visualizzare i commenti recenti.</p>
+        ) : (
+          <Card className="bg-body-tertiary border-0">
+            <Card.Body className="p-0">
+              <div className="d-flex flex-column">
+                {modComments.map((item, idx) => (
+                  <div key={`${item.postId}-${item.comment._id}`}>
+                    {idx > 0 && <hr className="my-0" />}
+                    <div className="p-3 d-flex align-items-start gap-3">
+                      <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                        <div className="small text-body-secondary mb-1">
+                          Post:{' '}
+                          <Link to={`/blog/${item.postId}`} className="text-body-secondary text-decoration-underline">
+                            {item.postTitle}
+                          </Link>
+                        </div>
+                        <div className="fw-semibold small mb-1">{item.comment.author}</div>
+                        <div className="small" style={{ wordBreak: 'break-word' }}>{item.comment.content}</div>
+                        <div className="small text-body-secondary mt-1">
+                          {item.comment.createdAt ? new Date(item.comment.createdAt).toLocaleString('it-IT') : ''}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        className="flex-shrink-0"
+                        onClick={() => deleteModComment(item.postId, item.comment._id)}
+                      >
+                        Elimina
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card.Body>
+          </Card>
+        )}
+        {modTotalPages > 1 && modComments.length > 0 && (
+          <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+            <Button size="sm" variant="outline-secondary" disabled={modPage <= 1} onClick={() => fetchModComments(modPage - 1)}>
+              Precedente
+            </Button>
+            <span className="small text-body-secondary">Pagina {modPage} di {modTotalPages}</span>
+            <Button size="sm" variant="outline-secondary" disabled={modPage >= modTotalPages} onClick={() => fetchModComments(modPage + 1)}>
+              Successiva
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Modal cambio ruolo */}
       <Modal show={showRoleModal} onHide={() => setShowRoleModal(false)} centered>

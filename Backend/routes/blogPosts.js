@@ -4,6 +4,7 @@ import Author from '../models/Author.js'
 import upload from '../middlewares/upload.js'
 import { sendNewPostEmail, sendPostDeletedEmail, sendFirstCommentEmail } from '../services/email.js'
 import authMiddleware from '../middlewares/authMiddleware.js'
+import adminMiddleware from '../middlewares/adminMiddleware.js'
 import { sanitizeContent } from '../utils/sanitize.js'
 import { handleRouteError, sendValidationError } from '../utils/errorHandling.js'
 import { validateBlogPostPayload, validateCommentPayload } from '../utils/validation.js'
@@ -198,6 +199,47 @@ router.get('/authors', async (req, res) => {
   }
 })
 
+// GET /blogPosts/admin/comments — tutti i commenti recenti (solo admin)
+// DEVE stare prima di /:id altrimenti Express intercetta con id='admin'
+router.get('/admin/comments', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { page, limit, skip } = parsePaginationParams(req.query, {
+      defaultPage: 1,
+      defaultLimit: 20,
+      maxLimit: 100
+    })
+
+    const result = await BlogPost.aggregate([
+      { $unwind: '$comments' },
+      { $sort: { 'comments.createdAt': -1 } },
+      {
+        $project: {
+          _id: 0,
+          postId: '$_id',
+          postTitle: '$title',
+          comment: '$comments'
+        }
+      },
+      { $skip: skip },
+      { $limit: limit }
+    ])
+
+    const total = await BlogPost.aggregate([
+      { $project: { count: { $size: '$comments' } } },
+      { $group: { _id: null, total: { $sum: '$count' } } }
+    ])
+
+    res.json({
+      comments: result,
+      currentPage: page,
+      totalPages: Math.ceil((total[0]?.total || 0) / limit),
+      totalComments: total[0]?.total || 0
+    })
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
 // GET /blogPosts/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -373,6 +415,28 @@ router.patch('/:blogPostId/cover', authMiddleware, upload.single('cover'), async
   }
 })
 
+// PATCH /blogPosts/:id/like — toggle like (aggiunge o rimuove il like dell'utente corrente)
+router.patch('/:id/like', authMiddleware, async (req, res) => {
+  try {
+    const blogPost = await getBlogPostByIdOr404(res, req.params.id)
+    if (!blogPost) return
+
+    const userId = String(req.user.id)
+    const alreadyLiked = blogPost.likes.some((id) => String(id) === userId)
+
+    if (alreadyLiked) {
+      blogPost.likes = blogPost.likes.filter((id) => String(id) !== userId)
+    } else {
+      blogPost.likes.push(req.user.id)
+    }
+
+    await blogPost.save()
+    res.json({ liked: !alreadyLiked, likesCount: blogPost.likes.length })
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
 // ─── SCRITTURA COMMENTI ────────────────────────────────────────────────────
 
 // POST /blogPosts/:id  — aggiungi un commento al post (spec consegna)
@@ -462,6 +526,91 @@ router.delete('/:id/comment/:commentId', authMiddleware, async (req, res) => {
     await blogPost.save()
 
     res.json({ message: 'Commento eliminato' })
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
+// ─── SCRITTURA RISPOSTE AI COMMENTI ───────────────────────────────────────
+
+// POST /blogPosts/:id/comment/:commentId/reply — aggiungi risposta a un commento
+router.post('/:id/comment/:commentId/reply', authMiddleware, async (req, res) => {
+  try {
+    const blogPost = await getBlogPostByIdOr404(res, req.params.id)
+    if (!blogPost) return
+
+    const comment = getCommentByIdOr404(res, blogPost, req.params.commentId)
+    if (!comment) return
+
+    const { errors, sanitized } = validateCommentPayload(req.body, { requireAuthor: false })
+    if (errors.length) return sendValidationError(res, errors)
+
+    const replierName = sanitized.author || `${req.user.nome || ''} ${req.user.cognome || ''}`.trim()
+
+    comment.replies.push({
+      author: replierName,
+      authorId: req.user.id,
+      authorEmail: req.user.email,
+      content: sanitized.content
+    })
+    await blogPost.save()
+
+    const newReply = comment.replies[comment.replies.length - 1]
+    res.status(201).json(newReply)
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
+// PUT /blogPosts/:id/comment/:commentId/reply/:replyId — modifica risposta
+router.put('/:id/comment/:commentId/reply/:replyId', authMiddleware, async (req, res) => {
+  try {
+    const blogPost = await getBlogPostByIdOr404(res, req.params.id)
+    if (!blogPost) return
+
+    const comment = getCommentByIdOr404(res, blogPost, req.params.commentId)
+    if (!comment) return
+
+    const reply = comment.replies.id(req.params.replyId)
+    if (!reply) return res.status(404).json({ message: 'Risposta non trovata' })
+
+    if (!canModifyComment(req, reply)) {
+      return res.status(403).json({ message: 'Non autorizzato: puoi modificare solo le tue risposte' })
+    }
+
+    const { errors, sanitized } = validateCommentPayload(req.body, { requireAuthor: false })
+    if (errors.length) return sendValidationError(res, errors)
+
+    if (sanitized.author) reply.author = sanitized.author
+    reply.content = sanitized.content
+    reply.updatedAt = new Date()
+
+    await blogPost.save()
+    res.json(reply)
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
+// DELETE /blogPosts/:id/comment/:commentId/reply/:replyId — elimina risposta
+router.delete('/:id/comment/:commentId/reply/:replyId', authMiddleware, async (req, res) => {
+  try {
+    const blogPost = await getBlogPostByIdOr404(res, req.params.id)
+    if (!blogPost) return
+
+    const comment = getCommentByIdOr404(res, blogPost, req.params.commentId)
+    if (!comment) return
+
+    const reply = comment.replies.id(req.params.replyId)
+    if (!reply) return res.status(404).json({ message: 'Risposta non trovata' })
+
+    if (!canModifyComment(req, reply)) {
+      return res.status(403).json({ message: 'Non autorizzato: puoi eliminare solo le tue risposte' })
+    }
+
+    reply.deleteOne()
+    await blogPost.save()
+    res.json({ message: 'Risposta eliminata' })
   } catch (err) {
     handleRouteError(res, err)
   }

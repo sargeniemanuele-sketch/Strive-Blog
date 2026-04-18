@@ -26,6 +26,7 @@ const Dashboard = () => {
     confirmNewPassword: ""
   })
   const [myPosts, setMyPosts] = useState([]);
+  const [savedPosts, setSavedPosts] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -64,6 +65,17 @@ const Dashboard = () => {
     }
   }, [handleError]);
 
+  const fetchSavedPosts = useCallback(async () => {
+    try {
+      const res = await authedFetch(`${API_BASE_URL}/authors/bookmarks`);
+      const data = await res.json();
+      if (!res.ok) return;
+      setSavedPosts(Array.isArray(data) ? data : []);
+    } catch {
+      // silenzioso: i bookmark non sono critici
+    }
+  }, []);
+
   const fetchMe = useCallback(async () => {
     setLoadingProfile(true)
     try {
@@ -90,12 +102,13 @@ const Dashboard = () => {
       });
       setMeAvatarSrc(data.avatar || buildAvatarFallback(data));
       fetchMyPosts(data._id);
+      fetchSavedPosts();
     } catch (err) {
       handleError(err.message);
     } finally {
       setLoadingProfile(false)
     }
-  }, [fetchMyPosts, forceRelogin, handleError]);
+  }, [fetchMyPosts, fetchSavedPosts, forceRelogin, handleError]);
 
   const saveProfile = async () => {
     if (!me?._id) return;
@@ -400,6 +413,31 @@ const Dashboard = () => {
           )}
         </Card.Body>
       </Card>
+      <Card className="bg-body-tertiary border-0 mt-4">
+        <Card.Body>
+          <h3 className="h6 mb-3">Post salvati ({savedPosts.length})</h3>
+          {savedPosts.length === 0 ? (
+            <p className="text-body-secondary mb-0">Nessun post salvato. Usa il pulsante ☆ negli articoli per aggiungerli qui.</p>
+          ) : (
+            <div className="d-flex flex-column gap-2">
+              {savedPosts.map((post) => (
+                <Link
+                  key={post._id}
+                  to={`/blog/${post._id}`}
+                  className="d-flex justify-content-between align-items-center p-2 rounded-2 border text-decoration-none"
+                >
+                  <div style={{ minWidth: 0 }} className="me-2">
+                    <div className="small fw-semibold text-truncate">{post.title}</div>
+                    <div className="small text-body-secondary">{post.category}</div>
+                  </div>
+                  <span className="small text-body-secondary flex-shrink-0">Apri</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
       <Card className="border-danger border-opacity-50 mt-4">
         <Card.Body>
           <h3 className="h6 mb-1 text-danger">Zona pericolosa</h3>

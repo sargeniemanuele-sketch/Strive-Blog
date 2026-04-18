@@ -16,7 +16,7 @@ const formatPublishedAt = (updatedAt, createdAt, id) => {
   })
 }
 
-const BlogItem = ({ title, cover, author, authorName, authorAvatar, authorId, category, readTime, content, _id, createdAt, updatedAt }) => {
+const BlogItem = ({ title, cover, author, authorName, authorAvatar, authorId, category, readTime, content, _id, createdAt, updatedAt, likes }) => {
   const navigate = useNavigate()
   const authorLabel = authorName || author
   const avatarName = encodeURIComponent(authorLabel || "Autore")
@@ -60,9 +60,14 @@ const BlogItem = ({ title, cover, author, authorName, authorAvatar, authorId, ca
       </Card.Body>
 
       <Card.Footer className="blog-card-footer">
+        {(likes?.length > 0) && (
+          <span className="blog-card-likes me-auto" title={`${likes.length} ${likes.length === 1 ? 'like' : 'like'}`}>
+            ♥ {likes.length}
+          </span>
+        )}
         <Link
           to={authorTo}
-          className="blog-author-link d-flex align-items-center w-100"
+          className="blog-author-link d-flex align-items-center ms-auto"
           style={{ gap: '0.7rem' }}
           onClick={(e) => e.stopPropagation()}
         >

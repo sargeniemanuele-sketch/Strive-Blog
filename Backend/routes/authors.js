@@ -252,6 +252,92 @@ router.post('/resend-verification', resendVerificationRateLimiter, async (req, r
   }
 })
 
+// GET /authors/bookmarks - post salvati dell'utente corrente (con dati completi del post)
+router.get('/bookmarks', authMiddleware, async (req, res) => {
+  try {
+    const author = await Author.findById(req.user.id).select('savedPosts')
+    if (!author) return res.status(404).json({ message: 'Autore non trovato' })
+
+    if (!author.savedPosts.length) return res.json([])
+
+    const posts = await BlogPost.find({ _id: { $in: author.savedPosts } })
+      .select('title category cover readTime authorName authorId updatedAt createdAt')
+      .sort({ updatedAt: -1 })
+
+    res.json(posts)
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
+// PATCH /authors/bookmarks/:postId - toggle post salvato
+router.patch('/bookmarks/:postId', authMiddleware, async (req, res) => {
+  try {
+    const author = await Author.findById(req.user.id).select('savedPosts')
+    if (!author) return res.status(404).json({ message: 'Autore non trovato' })
+
+    const postId = req.params.postId
+    const alreadySaved = author.savedPosts.some((id) => String(id) === postId)
+
+    if (alreadySaved) {
+      author.savedPosts = author.savedPosts.filter((id) => String(id) !== postId)
+    } else {
+      // Verifica che il post esista prima di salvarlo
+      const exists = await BlogPost.exists({ _id: postId })
+      if (!exists) return res.status(404).json({ message: 'Post non trovato' })
+      author.savedPosts.push(postId)
+    }
+
+    await author.save()
+    res.json({ saved: !alreadySaved, savedCount: author.savedPosts.length })
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
+// GET /authors/stats - statistiche aggregate (solo admin)
+router.get('/stats', adminMiddleware, async (req, res) => {
+  try {
+    const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+    const [
+      totalAuthors,
+      newAuthorsLastMonth,
+      postStats,
+      topPosts
+    ] = await Promise.all([
+      Author.countDocuments(),
+      Author.countDocuments({ createdAt: { $gte: oneMonthAgo } }),
+      BlogPost.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalPosts: { $sum: 1 },
+            totalComments: { $sum: { $size: '$comments' } },
+            totalLikes: { $sum: { $size: '$likes' } }
+          }
+        }
+      ]),
+      BlogPost.aggregate([
+        { $project: { title: 1, commentsCount: { $size: '$comments' }, likesCount: { $size: '$likes' } } },
+        { $sort: { commentsCount: -1 } },
+        { $limit: 5 }
+      ])
+    ])
+
+    res.json({
+      totalAuthors,
+      newAuthorsLastMonth,
+      totalPosts: postStats[0]?.totalPosts || 0,
+      totalComments: postStats[0]?.totalComments || 0,
+      totalLikes: postStats[0]?.totalLikes || 0,
+      topPosts
+    })
+  } catch (err) {
+    handleRouteError(res, err)
+  }
+})
+
 // GET /authors - solo admin, lista paginata con ricerca opzionale per nome/cognome/email
 router.get('/', adminMiddleware, async (req, res) => {
   try {

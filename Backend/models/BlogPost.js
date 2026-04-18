@@ -1,10 +1,32 @@
 import mongoose from 'mongoose'
 
-const commentSchema = new mongoose.Schema({
+const replySchema = new mongoose.Schema({
   author: { type: String, required: true },
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Author', default: null },
   authorEmail: { type: String, default: '' },
   content: { type: String, required: true }
+}, {
+  timestamps: true,
+  toJSON: {
+    transform: (_doc, ret) => {
+      delete ret.authorEmail
+      return ret
+    }
+  },
+  toObject: {
+    transform: (_doc, ret) => {
+      delete ret.authorEmail
+      return ret
+    }
+  }
+})
+
+const commentSchema = new mongoose.Schema({
+  author: { type: String, required: true },
+  authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Author', default: null },
+  authorEmail: { type: String, default: '' },
+  content: { type: String, required: true },
+  replies: { type: [replySchema], default: [] }
 }, {
   timestamps: true,
   toJSON: {
@@ -38,6 +60,7 @@ const blogPostSchema = new mongoose.Schema({
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Author', default: null },
   authorName: { type: String, default: '' },
   // Interazioni
+  likes: { type: [mongoose.Schema.Types.ObjectId], ref: 'Author', default: [] },
   comments: { type: [commentSchema], default: [] }
 }, {
   timestamps: true

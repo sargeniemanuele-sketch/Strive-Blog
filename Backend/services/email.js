@@ -76,7 +76,7 @@ const sendEmailVerificationEmail = async (author, verificationUrl) => {
         <a href="${verificationUrl}" style="color:#2563eb;">${verificationUrl}</a>
       </p>
       <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:14px 18px;border-radius:0 6px 6px 0;">
-        <p style="margin:0;font-size:13px;color:#991b1b;">Il link scade tra 24 ore. Se non verifichi l'email entro 7 giorni dalla registrazione, il tuo account verrà eliminato automaticamente. Se non sei stato tu a registrarti, ignora questa email.</p>
+        <p style="margin:0;font-size:13px;color:#991b1b;">Il link scade tra 24 ore. Se non verifichi l'email entro 24 ore dalla registrazione, il tuo account verrà eliminato automaticamente. Se non sei stato tu a registrarti, ignora questa email.</p>
       </div>
     `
   })
@@ -109,7 +109,8 @@ const sendWelcomeEmail = async (author) => {
       <p style="margin:0 0 12px 0;color:#374151;">il tuo account è stato creato con successo. Da adesso puoi:</p>
       <ul style="margin:0 0 20px 0;padding-left:20px;color:#374151;line-height:1.8;">
         <li>Pubblicare articoli e condividere le tue idee</li>
-        <li>Commentare i post degli altri autori</li>
+        <li>Commentare i post degli altri autori e rispondere ai commenti</li>
+        <li>Mettere like ai post e salvare i tuoi articoli preferiti</li>
         <li>Personalizzare il tuo profilo con avatar e bio</li>
       </ul>
       ${ctaButton(frontendUrl, 'Inizia a scrivere')}

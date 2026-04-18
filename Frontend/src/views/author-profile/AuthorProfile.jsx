@@ -266,15 +266,25 @@ const AuthorProfile = () => {
   // Errore generico (non 404)
   if (!author) {
     return (
-      <Container className="pt-5 mt-5 pb-5">
-        <Button type="button" variant="secondary" size="sm" className="btn-nav mb-4" onClick={() => navigate(-1)}>
-          Indietro
-        </Button>
-        <p className="text-body-secondary">Profilo autore non disponibile.</p>
-        <FixedAlerts
-          alerts={[{ key: "author-profile-error-empty", variant: "danger", text: error, onClose: error ? () => setError("") : undefined }]}
-        />
-      </Container>
+      <div className="min-vh-100 d-flex align-items-center justify-content-center">
+        <Container className="text-center py-5">
+          <div className="mb-3" style={{ fontSize: "4rem", opacity: 0.15, fontWeight: 700, lineHeight: 1 }}>
+            404
+          </div>
+          <h1 className="h4 fw-bold mb-2">Profilo non trovato</h1>
+          <p className="text-body-secondary mb-4">
+            Questo profilo non esiste o non è disponibile.
+          </p>
+          <div className="d-flex gap-2 justify-content-center">
+            <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
+              Indietro
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => navigate("/")}>
+              Vai alla home
+            </Button>
+          </div>
+        </Container>
+      </div>
     );
   }
 

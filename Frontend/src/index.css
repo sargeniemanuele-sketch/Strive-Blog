@@ -86,7 +86,7 @@ img, video, iframe, embed, object { max-width: 100%; }
   overflow: hidden; min-height: calc(0.9rem * 1.45 * 3);
 }
 .blog-card-readtime { margin-top: 0.75rem; font-size: 0.78rem; color: #9ca3af; }
-.blog-card-footer { background: #111827; border-top: 1px solid #2a3040; padding: 0.8rem 1rem; }
+.blog-card-footer { background: #111827; border-top: 1px solid #2a3040; padding: 0.8rem 1rem; display: flex; align-items: center; gap: 0.5rem; }
 .blog-card-author-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #334155; }
 .blog-card-author-label { font-size: 0.72rem; color: #94a3b8; }
 .blog-card-author-name { font-size: 0.95rem; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -149,3 +149,21 @@ tr.admin-row.table-active { --bs-table-bg: rgba(124,58,237,0.22); }
 .new-editor .ProseMirror h2, .new-editor .ProseMirror h3 { color: #f3f4f6; margin-top: 1rem; }
 .new-editor .ProseMirror ul, .new-editor .ProseMirror ol { padding-left: 1.4rem; }
 .new-editor .ProseMirror blockquote { border-left: 2px solid var(--bs-primary); padding-left: 1rem; color: #94a3b8; font-style: italic; }
+
+/* ── Like button ── */
+.like-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: none; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2rem; padding: 0.3rem 0.85rem;
+  color: #94a3b8; font-size: 0.95rem; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  line-height: 1;
+}
+.like-btn:hover:not(:disabled) { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.08); }
+.like-btn--active { border-color: #f87171 !important; color: #f87171 !important; background: rgba(248,113,113,0.12) !important; }
+.like-btn:disabled { cursor: default; opacity: 0.5; }
+.like-btn__icon { font-size: 1.05rem; line-height: 1; }
+.like-btn__count { font-weight: 600; min-width: 1ch; }
+
+/* ── Card likes count ── */
+.blog-card-likes { font-size: 0.8rem; color: #f87171; font-weight: 600; }

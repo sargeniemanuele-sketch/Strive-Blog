@@ -13,6 +13,7 @@ import AuthorProfile from "./views/author-profile/AuthorProfile";
 import DeletedAuthorPage from "./views/author-profile/DeletedAuthorPage";
 import PasswordChangeConfirm from "./views/password-change-confirm/PasswordChangeConfirm";
 import VerifyEmail from "./views/verify-email/VerifyEmail";
+import NotFound from "./views/not-found/NotFound";
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { clearAuthToken, setAuthToken, getAuthToken, getAuthHeader, API_BASE_URL } from "./utils/api";
 import useAuthStatus from "./hooks/useAuthStatus";
@@ -135,6 +136,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
     </Router>
